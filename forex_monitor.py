@@ -134,6 +134,13 @@ def run_outcome_checks():
                 print(f"  [PRICE {pair}] {e}")
         if prices:
             ot.check_all(prices)
+            # Run learning cycle after outcomes are updated
+            try:
+                import forex_learner
+                importlib.reload(forex_learner)
+                forex_learner.run_learning_cycle()
+            except Exception as lrn_err:
+                print(f"  [FOREX LEARNER] {lrn_err}")
         return prices
     except Exception as e:
         print(f"  [OUTCOME] {e}")
@@ -203,7 +210,8 @@ def main():
     )
 
     last_status_push   = 0
-    session_flat_fired = ""   # date string — fire once per day
+    session_flat_fired = ""
+    last_advisor_date  = ""   # nightly advisor fires once per day at 10 PM ET
 
     while True:
         now_ts    = now_est()
@@ -242,6 +250,18 @@ def main():
             if elapsed >= STATUS_PUSH_INTERVAL or last_status_push == 0:
                 send_status_push({p: [] for p in ["EUR_USD", "GBP_USD", "AUD_USD"]}, {})
                 last_status_push = time.time()
+
+        # Nightly advisor at 10 PM ET — weekdays only, once per day
+        _today = now_ts.strftime("%Y-%m-%d")
+        if now_ts.weekday() < 5 and now_ts.hour == 22 and last_advisor_date != _today:
+            last_advisor_date = _today
+            try:
+                import threading, forex_learning_advisor
+                importlib.reload(forex_learning_advisor)
+                threading.Thread(target=forex_learning_advisor.run_advisor, daemon=True).start()
+                print(f"  [FOREX ADVISOR] Nightly run started")
+            except Exception as adv_err:
+                print(f"  [FOREX ADVISOR] {adv_err}")
 
         time.sleep(interval)
 

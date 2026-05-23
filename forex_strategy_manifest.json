@@ -1,0 +1,22 @@
+{
+  "last_updated": "2026-05-23",
+  "_note": "Update this file whenever you change the forex strategy so the learning advisor stays in sync.",
+  "EUR_USD": {
+    "active_setups": ["S1", "S2", "S3"],
+    "removed_setups": [],
+    "score_gate_min": 5,
+    "notes": "V2 active. S1 Asian Break 9-11AM, S2 Liq Sweep 9-10:30AM, S3 PDH/PDL 9-12PM."
+  },
+  "GBP_USD": {
+    "active_setups": ["S1", "S2", "S3"],
+    "removed_setups": [],
+    "score_gate_min": 5,
+    "notes": "V2 active. Same windows as EUR/USD."
+  },
+  "AUD_USD": {
+    "active_setups": ["S1", "S3"],
+    "removed_setups": ["S2"],
+    "score_gate_min": 5,
+    "notes": "V2 active. S2 excluded — London overlap conflict with AUD session."
+  }
+}
