@@ -197,8 +197,8 @@ def check_s2(ind: dict) -> dict | None:
 def check_s3(ind: dict) -> dict | None:
     """Returns armed setup dict or None."""
     now = datetime.now(EST)
-    # Window: 9:00 AM – 12:00 PM ET
-    if not (9 <= now.hour < 12):
+    # Window: 9:00 AM – 2:00 PM ET
+    if not (9 <= now.hour < 14):
         return None
 
     pdh_pdl = _pdh_pdl(ind["df_1h"])
@@ -248,6 +248,83 @@ def check_s3(ind: dict) -> dict | None:
     }
 
 
+# ─── SETUP 4 — Post-News Sweep ────────────────────────────────────────────────
+
+_NEWS_SPIKE_MULT    = 2.0   # bar range > 2x ATR SMA = news spike
+_POST_NEWS_MIN_PIPS = 3
+_POST_NEWS_MAX_PIPS = 25
+
+
+def check_s4_pn(ind: dict) -> dict | None:
+    """
+    Post-news sweep: detect a news spike (bar range > 2x ATR SMA) in the
+    last 1-3 bars, then look for a sweep-and-reverse of the spike high/low
+    on the current bar. Window 9 AM - 3 PM ET.
+    Uses pre-spike ATR (atr_sma20) for the score ATR-ratio factor.
+    """
+    now = datetime.now(EST)
+    if not (9 <= now.hour < 15):
+        return None
+
+    df_1h     = ind["df_1h"]
+    atr_sma20 = ind["atr_sma20"]
+    if len(df_1h) < 5 or atr_sma20 <= 0:
+        return None
+
+    # Scan the last 3 complete bars (before the current bar) for a spike
+    spike_high = spike_low = None
+    for lookback in range(1, 4):
+        bar = df_1h.iloc[-(lookback + 1)]
+        if (bar["high"] - bar["low"]) > _NEWS_SPIKE_MULT * atr_sma20:
+            spike_high = float(bar["high"])
+            spike_low  = float(bar["low"])
+            break
+
+    if spike_high is None:
+        return None
+
+    last = df_1h.iloc[-1]
+    sh   = (last["high"] - spike_high) / PIP   # pips above spike high
+    sb   = (spike_low  - last["low"])  / PIP   # pips below spike low
+
+    direction = entry = sl = tp1 = tp2 = None
+
+    if _POST_NEWS_MIN_PIPS <= sh <= _POST_NEWS_MAX_PIPS and last["close"] < spike_high:
+        direction = "SHORT"
+        entry = spike_high
+        sl    = last["high"] + 0.5 * atr_sma20
+        risk  = abs(entry - sl)
+        tp1   = entry - 0.75 * risk
+        tp2   = entry - 1.5  * atr_sma20
+    elif _POST_NEWS_MIN_PIPS <= sb <= _POST_NEWS_MAX_PIPS and last["close"] > spike_low:
+        direction = "LONG"
+        entry = spike_low
+        sl    = last["low"] - 0.5 * atr_sma20
+        risk  = abs(entry - sl)
+        tp1   = entry + 0.75 * risk
+        tp2   = entry + 1.5  * atr_sma20
+
+    if direction is None:
+        return None
+
+    # Score with pre-spike ATR ratio so F5 isn't blocked by spike volatility
+    ind_pn = dict(ind)
+    ind_pn["atr_ratio"] = 1.0
+    score, factors = score_common(ind_pn, direction, _body_ratio(last))
+    if score < SCORE_GATE_MIN:
+        return None
+
+    return {
+        "pair": PAIR, "setup": "S4-PostNews", "direction": direction,
+        "entry": round(entry, 5), "sl": round(sl, 5),
+        "tp1": round(tp1, 5),    "tp2": round(tp2, 5),
+        "score": score, "score_factors": "|".join(factors),
+        "atr14": round(atr_sma20, 5), "rsi14": ind["rsi14"],
+        "trend_daily": ind["trend_daily"], "trend_4h": ind["trend_4h"],
+        "dema_dir": ind["dema_dir"],
+    }
+
+
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 def eur_usd_main() -> list[dict]:
@@ -270,7 +347,7 @@ def eur_usd_main() -> list[dict]:
     armed  = []
     now_ts = datetime.now(EST).isoformat()
 
-    for checker in (check_s1, check_s2, check_s3):
+    for checker in (check_s1, check_s2, check_s3, check_s4_pn):
         sig = checker(ind)
         if sig:
             sig["timestamp"] = now_ts

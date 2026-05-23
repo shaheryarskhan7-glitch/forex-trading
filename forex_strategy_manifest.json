@@ -2,21 +2,21 @@
   "last_updated": "2026-05-23",
   "_note": "Update this file whenever you change the forex strategy so the learning advisor stays in sync.",
   "EUR_USD": {
-    "active_setups": ["S1", "S2", "S3"],
+    "active_setups": ["S1", "S2", "S3", "S4-PostNews"],
     "removed_setups": [],
     "score_gate_min": 5,
-    "notes": "V2 active. S1 Asian Break 9-11AM, S2 Liq Sweep 9-10:30AM, S3 PDH/PDL 9-12PM."
+    "notes": "V3 active. S1 Asian Break 9-11AM, S2 Liq Sweep 9-10:30AM, S3 PDH/PDL 9-2PM (extended from 12PM), S4-PostNews 9-3PM (bar range > 2x ATR SMA = spike, sweep+reverse 1-3 bars later)."
   },
   "GBP_USD": {
-    "active_setups": ["S1", "S2", "S3"],
+    "active_setups": ["S1", "S2", "S3", "S4-PostNews"],
     "removed_setups": [],
     "score_gate_min": 5,
-    "notes": "V2 active. Same windows as EUR/USD."
+    "notes": "V3 active. Same windows as EUR/USD."
   },
   "AUD_USD": {
-    "active_setups": ["S1", "S3"],
+    "active_setups": ["S1", "S3", "S4-PostNews"],
     "removed_setups": ["S2"],
     "score_gate_min": 5,
-    "notes": "V2 active. S2 excluded — London overlap conflict with AUD session."
+    "notes": "V3 active. S2 excluded — London overlap conflict. S3 extended to 2PM. S4-PostNews added."
   }
 }
