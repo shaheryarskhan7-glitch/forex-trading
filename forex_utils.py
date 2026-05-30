@@ -266,7 +266,11 @@ def is_news_blocked() -> bool:
 # ─── SIGNAL LOG ───────────────────────────────────────────────────────────────
 
 def log_signal(log_file: str, row: dict):
-    """Append one signal row to the pair's CSV log."""
+    """Append one signal row to the pair's CSV log.
+
+    Deduplicates on (pair, setup, direction, entry, date) so service restarts
+    don't re-log a signal that was already written in an earlier run.
+    """
     import csv
     headers = [
         "timestamp", "pair", "setup", "direction",
@@ -274,6 +278,16 @@ def log_signal(log_file: str, row: dict):
         "atr14", "rsi14", "trend_daily", "trend_4h", "dema_dir",
         "outcome", "exit_price", "resolved_time",
     ]
+    row_date = str(row.get("timestamp", ""))[:10]
+    if os.path.exists(log_file):
+        with open(log_file, newline="") as f:
+            for existing in csv.DictReader(f):
+                if (existing.get("pair")      == str(row.get("pair"))
+                        and existing.get("setup")     == str(row.get("setup"))
+                        and existing.get("direction") == str(row.get("direction"))
+                        and existing.get("entry")     == str(row.get("entry"))
+                        and str(existing.get("timestamp", ""))[:10] == row_date):
+                    return  # already logged — skip
     file_exists = os.path.exists(log_file)
     with open(log_file, "a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=headers, extrasaction="ignore")
